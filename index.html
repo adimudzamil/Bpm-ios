@@ -2,21 +2,24 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <meta name="apple-mobile-web-app-capable" content="yes">
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Passenger Meal & Tier Report</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="PAX Report">
+    <title>Passenger Meal & Tier Report - iOS</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
         
         body {
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
             padding: 20px;
             background: #f5f5f5;
+            -webkit-text-size-adjust: 100%;
         }
         
         .container {
@@ -40,32 +43,37 @@
         textarea {
             width: 100%;
             height: 150px;
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 11px;
+            font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
+            font-size: 12px;
             padding: 10px;
             border: 1px solid #333;
             resize: vertical;
             -webkit-appearance: none;
             -webkit-text-size-adjust: 100%;
+            border-radius: 4px;
         }
         
         .button-group {
             display: flex;
             gap: 10px;
             margin-top: 10px;
+            flex-wrap: wrap;
         }
         
         button {
-            padding: 10px 20px;
+            padding: 12px 20px;
             font-size: 14px;
             font-weight: bold;
             border: 2px solid #000;
             background: #fff;
             cursor: pointer;
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+            border-radius: 4px;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
         }
         
-        button:hover {
+        button:active {
             background: #000;
             color: #fff;
         }
@@ -204,7 +212,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>PASSENGER MEAL & TIER REPORT GENERATOR</h1>
+        <h1>PASSENGER MEAL & TIER REPORT (iOS)</h1>
         
         <div class="input-section">
             <textarea id="manifestInput" placeholder="Paste passenger manifest here..."></textarea>
@@ -225,6 +233,9 @@
             
             // Remove any zero-width spaces or invisible characters that iOS might add
             text = text.replace(/[\u200B-\u200D\uFEFF]/g, '');
+            
+            // Remove any non-breaking spaces
+            text = text.replace(/\u00A0/g, ' ');
             
             const lines = text.split('\n').map(l => l.trim()).filter(l => l !== '');
             const passengers = [];
@@ -276,7 +287,7 @@
                 const line = lines[i];
                 
                 // Stop at end marker
-                if (line.includes('-- END of PAX List') || line.includes('Showing') && line.includes('entries')) {
+                if (line.includes('-- END of PAX List') || (line.includes('Showing') && line.includes('entries'))) {
                     break;
                 }
                 
@@ -286,7 +297,7 @@
                     continue;
                 }
                 
-                // Start of a passenger record (either title or name)
+                // Start of a passenger record
                 const passenger = {
                     title: '',
                     name: '',
@@ -310,47 +321,39 @@
                     passenger.name = lines[i];
                     i++;
                 } else {
-                    // Not a passenger record, skip
                     i++;
                     continue;
                 }
                 
-                // Now collect remaining fields until we hit another title or name
+                // Collect remaining fields
                 while (i < lines.length) {
                     const field = lines[i];
                     
-                    // Stop if we hit next passenger (title or name with /)
+                    // Stop if we hit next passenger
                     if (titles.includes(field) || field.includes('/')) {
                         break;
                     }
                     
-                    // Stop at markers
                     if (field === '-- CUT HERE --' || field.includes('-- END of PAX List')) {
                         break;
                     }
                     
                     // Parse field by pattern
-                    // Seat
                     if (!passenger.seat && /^\d{2}[A-K]$/i.test(field)) {
                         passenger.seat = field.toUpperCase();
                     }
-                    // PNR
                     else if (!passenger.pnr && /^[A-Z0-9]{6,7}$/i.test(field)) {
                         passenger.pnr = field.toUpperCase();
                     }
-                    // Class
                     else if (!passenger.class && /^[JY]$/i.test(field)) {
                         passenger.class = field.toUpperCase();
                     }
-                    // FQTV
                     else if (!passenger.fqtv && (/^\d{6,12}$/.test(field) || /^MH\d+$/i.test(field))) {
                         passenger.fqtv = field;
                     }
-                    // Tier
                     else if (!passenger.tier && tiers.includes(field.toUpperCase())) {
                         passenger.tier = field.toUpperCase();
                     }
-                    // Meal
                     else if (!passenger.meal && /^[A-Z]{4}$/i.test(field) && field.toUpperCase().endsWith('ML')) {
                         passenger.meal = field.toUpperCase();
                     }
@@ -358,7 +361,6 @@
                     i++;
                 }
                 
-                // Add passenger if valid
                 if (passenger.name && passenger.class) {
                     passengers.push(passenger);
                 }
@@ -368,7 +370,6 @@
         }
         
         function detectAircraftType(passengers) {
-            // Check if any seat has letters G, H, J, K
             const widebodySeats = ['G', 'H', 'J', 'K'];
             for (const pax of passengers) {
                 if (pax.seat) {
@@ -386,11 +387,9 @@
             const seatLetter = seat.slice(-1);
             
             if (aircraftType === 'widebody') {
-                // Port: A-E, Starboard: F-K
                 if (['A', 'B', 'C', 'D', 'E'].includes(seatLetter)) return 'port';
                 if (['F', 'G', 'H', 'J', 'K'].includes(seatLetter)) return 'starboard';
             } else {
-                // Narrowbody: Port: A-C, Starboard: D-F
                 if (['A', 'B', 'C'].includes(seatLetter)) return 'port';
                 if (['D', 'E', 'F'].includes(seatLetter)) return 'starboard';
             }
@@ -445,7 +444,7 @@
                     const line = lines[i].trim();
                     debugInfo += `Line ${i}: "${line}"<br>`;
                     if (line.includes('/')) {
-                        debugInfo += `  → Contains name! Split result: [${line.split(/\s+/).join(', ')}]<br>`;
+                        debugInfo += `  → Contains name!<br>`;
                     }
                 }
             }
@@ -467,7 +466,7 @@
                 }
                 debugInfo += `</div>`;
                 
-                // Filter passengers (has meal OR tier is EMER/PLAT)
+                // Filter passengers
                 const filtered = passengers.filter(p => 
                     p.meal || p.tier === 'EMER' || p.tier === 'PLAT'
                 );
@@ -476,9 +475,6 @@
                     output.innerHTML = debugInfo + '<div class="error">No passengers found with special meals or EMER/PLAT tier.</div>';
                     return;
                 }
-                
-                // Remove debug info if successful
-                // output.innerHTML = debugInfo;
                 
                 // Detect aircraft type
                 const aircraftType = detectAircraftType(passengers);
@@ -492,12 +488,10 @@
                 let portPassengers, starboardPassengers, unassigned, assignedPassengers;
                 
                 if (aircraftType === 'narrowbody') {
-                    // For narrowbody, just separate assigned vs unassigned
                     assignedPassengers = filtered.filter(p => p.seat);
                     unassigned = filtered.filter(p => !p.seat);
                     assignedPassengers.sort(sortBySeat);
                 } else {
-                    // For widebody, separate by side
                     portPassengers = filtered.filter(p => getSeatSide(p.seat, aircraftType) === 'port');
                     starboardPassengers = filtered.filter(p => getSeatSide(p.seat, aircraftType) === 'starboard');
                     unassigned = filtered.filter(p => !p.seat);
@@ -509,7 +503,6 @@
                 const specialMealCount = filtered.filter(p => p.meal).length;
                 const tierCount = filtered.filter(p => p.tier === 'EMER' || p.tier === 'PLAT').length;
                 
-                // Meal breakdown
                 const mealCounts = {};
                 filtered.forEach(p => {
                     if (p.meal) {
@@ -524,15 +517,12 @@
                 // Generate HTML
                 let html = '';
                 
-                // Add wrapper for narrowbody to constrain width
                 if (aircraftType === 'narrowbody') {
                     html += `<div class="narrowbody-wrapper">`;
                 }
                 
-                // Flight info
                 html += `<div class="flight-info">Flight: ${flightInfo.flightNumber} | Route: ${flightInfo.sector} | Date: ${flightInfo.date} ${flightInfo.stdLocal} | ACFT: ${flightInfo.aircraft}</div>`;
                 
-                // Statistics
                 html += `<div class="stats">`;
                 html += `<strong>Summary:</strong> Special Meals: ${specialMealCount} | EMER/PLAT: ${tierCount}<br>`;
                 html += `<strong>Meal Breakdown:</strong> ${mealBreakdown || 'None'}`;
@@ -542,24 +532,19 @@
                     html += `</div>`;
                 }
                 
-                // Tables
                 html += `<div class="tables-container">`;
                 
                 if (aircraftType === 'narrowbody') {
-                    // Single table for narrowbody - half width
                     html += `<div class="table-wrapper">`;
                     html += `<div class="table-title">ALL PASSENGERS</div>`;
                     html += generateTable(assignedPassengers, true);
                     html += `</div>`;
                 } else {
-                    // Two tables for widebody
-                    // Port side table
                     html += `<div class="table-wrapper">`;
                     html += `<div class="table-title">PORT SIDE</div>`;
                     html += generateTable(portPassengers, true);
                     html += `</div>`;
                     
-                    // Starboard side table
                     html += `<div class="table-wrapper">`;
                     html += `<div class="table-title">STARBOARD SIDE</div>`;
                     html += generateTable(starboardPassengers, true);
@@ -568,7 +553,6 @@
                 
                 html += `</div>`;
                 
-                // Unassigned seats
                 if (unassigned.length > 0) {
                     if (aircraftType === 'narrowbody') {
                         html += `<div class="narrowbody-wrapper">`;
@@ -595,11 +579,10 @@
                 
                 output.innerHTML = html;
                 
-                // Hide input section after generating report
                 document.querySelector('.input-section').style.display = 'none';
                 
             } catch (error) {
-                output.innerHTML = `<div class="error">Error parsing manifest: ${error.message}</div>`;
+                output.innerHTML = debugInfo + `<div class="error">Error parsing manifest: ${error.message}</div>`;
                 console.error(error);
             }
         }
@@ -617,7 +600,6 @@
             
             let lastClass = '';
             passengers.forEach(p => {
-                // Add class divider
                 if (p.class !== lastClass && lastClass !== '') {
                     html += `<tr class="class-divider"><td colspan="${showSeat ? 5 : 4}">--- Economy Class ---</td></tr>`;
                 }
