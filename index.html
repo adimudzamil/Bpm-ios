@@ -267,12 +267,26 @@
                 }
             }
             
-            // Find MEALS header
+            // Find where passenger data starts
+            // iOS format: starts after "Passenger & Meal Count"
+            // Android format: starts after "MEALS" header
             let startIndex = -1;
+            
+            // Try to find "MEALS" header (Android format)
             for (let i = 0; i < lines.length; i++) {
                 if (lines[i] === 'MEALS') {
                     startIndex = i + 1;
                     break;
+                }
+            }
+            
+            // If not found, try iOS format (after "Passenger & Meal Count")
+            if (startIndex === -1) {
+                for (let i = 0; i < lines.length; i++) {
+                    if (lines[i] === 'Passenger & Meal Count' || lines[i].includes('Passenger & Meal Count')) {
+                        startIndex = i + 1;
+                        break;
+                    }
                 }
             }
             
@@ -436,7 +450,18 @@
                     break;
                 }
             }
-            debugInfo += `<br>MEALS header found at line: ${mealsIndex}<br>`;
+            
+            // If not found, try finding "Passenger & Meal Count" (iOS format)
+            if (mealsIndex === -1) {
+                for (let i = 0; i < lines.length; i++) {
+                    if (lines[i].includes('Passenger & Meal Count')) {
+                        mealsIndex = i;
+                        break;
+                    }
+                }
+            }
+            
+            debugInfo += `<br>Data start marker found at line: ${mealsIndex}<br>`;
             
             if (mealsIndex !== -1 && mealsIndex + 1 < lines.length) {
                 debugInfo += `Next 10 lines after MEALS:<br>`;
